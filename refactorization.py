@@ -138,6 +138,7 @@ def main():
         enemie.enemie_movement()
 
     thread3.join()
+    enemie.join()
     player.join()
 
     curses.endwin()
