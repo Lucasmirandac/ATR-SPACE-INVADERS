@@ -24,12 +24,8 @@ flagEnemie = True
 class Player (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        self.key = curses.KEY_DOWN
-        self.right = curses.KEY_RIGHT
-        self.left = curses.KEY_LEFT
-        self.shot = curses.KEY_UP
         self.position = [18, 30]
-        self.shotPosition = [0, 0]
+        self.shotPosition = [17, 30]
 
     def run(self):
         self.controlMovements()
@@ -37,7 +33,7 @@ class Player (threading.Thread):
     def controlMovements(self):
         global flag
         global event
-        if event == self.right:
+        if event == curses.KEY_RIGHT:
             coordinates = [self.position[0], self.position[1] + 1]
             if coordinates[1] != WINDOW_WIDTH-1:
                 # apaga posicao atual
@@ -49,7 +45,7 @@ class Player (threading.Thread):
         if self.position == WINDOW_WIDTH - 1:
             pass
 
-        if event == self.left:
+        if event == curses.KEY_LEFT:
             # move jogador para esquerda
             coordinates = [self.position[0], self.position[1] - 1]
             if coordinates[1] != 1:
@@ -59,27 +55,31 @@ class Player (threading.Thread):
                 self.position[0] = coordinates[0]
                 win.addch(coordinates[0], coordinates[1], "x")
 
-        if event == self.shot:
+        if event == curses.KEY_UP:
             self.shotPosition[0] = self.position[0] - 1
             self.shotPosition[1] = self.position[1]
+
             win.addch(self.shotPosition[0], self.shotPosition[1], ".")
+
             while(self.shotPosition[0] > 4):
                 if(flag):
                     win.addch(self.shotPosition[0], self.shotPosition[1], ".")
                     oldPosition = self.shotPosition[0]
                     self.shotPosition[0] = self.shotPosition[0] - 1
                     win.addch(oldPosition, self.shotPosition[1], " ")
+
                     mutex.acquire()
                     flag = False
                     mutex.release()
                 
         time.sleep(0.02)
+
 class Enemie (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.enemie_position = [4, 28]  # posição do inimigo
-        self.enemie_shot_position = [0, 0]  # direção do tiro
-        self.operator = 1  # define esquerda ou direita, está começando para direita
+        self.enemie_shot_position = [0, 0]  # inicialização da posição do tiro
+        self.operator = 1  # aumenta ou diminui se indo para esquerda ou direita
         self.direction = 'right'
 
     def run(self):
@@ -90,24 +90,33 @@ class Enemie (threading.Thread):
         global flagEnemie
 
         if(flagEnemie):
-            for x in range(4):
+            for x in range(4): 
                 if self.direction == 'right':
-                    erase = self.enemie_position[1] - 5
+                    erase = self.enemie_position[1] - 5 # apaga o 5 elemento da direita para esquerda
                 else:
-                    erase = self.enemie_position[1] + 5
+                    erase = self.enemie_position[1] + 5 # apaga o 5 elemento da esquerda para direita
 
-                if self.enemie_position[1] == WINDOW_WIDTH-6:
+                if self.enemie_position[1] == WINDOW_WIDTH-6: #setando largura máxima
                     self.operator = -1
                     self.direction = 'left'
 
-                if self.enemie_position[1] == 6:
+                if self.enemie_position[1] == 6: #setando largura máxima
                     self.operator = 1
                     self.direction = 'right'
 
-                self.enemie_position[1] = self.enemie_position[1] + self.operator
-                win.addch(self.enemie_position[0], self.enemie_position[1], 'o')
-                win.addch(self.enemie_position[0], erase, ' ')
-                self.enemie_shot_position[0] = self.enemie_position[0] + 1
+                self.enemie_position[1] = self.enemie_position[1] + self.operator # aumenta ou diminui variavel de acordo com o operador
+                win.addch(self.enemie_position[0], self.enemie_position[1], 'o') # printa o inimigo
+                win.addch(self.enemie_position[0], erase, ' ') # apaga conforme se movimenta
+                shot_in_the_middle = self.enemie_position[1] - 2
+
+                if(self.enemie_shot_position[0] < 18):
+                    self.enemie_shot_position[0] = self.enemie_position[0] + 1
+                    win.addch(self.enemie_shot_position[0], shot_in_the_middle, '|')
+                    win.addch(self.enemie_position[0], shot_in_the_middle, ' ')
+
+                elif(self.enemie_shot_position[0] == 18):
+                    win.addch(self.enemie_position[0], shot_in_the_middle, ' ')
+
 
                 mutex.acquire()
                 flagEnemie = False
@@ -116,21 +125,17 @@ class Enemie (threading.Thread):
             time.sleep(0.02)
             # self.shot()
         
-    def shot(self):
-        shot_in_the_middle = self.enemie_position[1] - 2
-        win.addch(self.enemie_shot_position[0], shot_in_the_middle, '|')
-        win.addch(self.enemie_position[0], shot_in_the_middle, ' ')
 
 def updateScreen():
     global flag
     global flagEnemie
 
     while(event != ESC):
-        win.timeout(100)
-        
+        win.timeout(100) 
+
         mutex.acquire()
-        flag = True
-        flagEnemie = True
+        flag = True #flag que sinaliza que o player pode se mover
+        flagEnemie = True #flag que sinaliza que o enemie pode se mover
         mutex.release()
 
         time.sleep(0.1)
@@ -146,7 +151,7 @@ def main():
     enemie.start()
     thread3.start()
 
-    while event != ESC:
+    while event != ESC: # enquanto evento não for esc continua rodando o programa
         event = win.getch()
         player.run()
         enemie.run()
