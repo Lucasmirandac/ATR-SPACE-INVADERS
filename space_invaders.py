@@ -5,6 +5,10 @@ from random import randint
 sem = threading.Semaphore()
 mutex = threading.Lock()
 
+WINDOW_WIDTH = 60  # numero de colunas da tela
+WINDOW_HEIGHT = 20  # numero de linhas da tela
+ESC = 27 
+
 curses.initscr()
 win = curses.newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0)
 win.keypad(1)
@@ -12,10 +16,6 @@ curses.noecho()
 curses.curs_set(0)
 win.border(0)
 win.nodelay(1)
-
-WINDOW_WIDTH = 60  # numero de colunas da tela
-WINDOW_HEIGHT = 20  # numero de linhas da tela
-ESC = 27 
 
 score = 0
 event = curses.KEY_DOWN
