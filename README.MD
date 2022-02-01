@@ -1,3 +1,5 @@
+Projeto da disciplina de automação em tempo real, utilizo threads para simular o funcionamento do jogo space invaders
+
 - Para movimentar o personagem pressione a seta esquerda ou direta
 
 - Para atirar pressione seta para cima
