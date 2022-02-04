@@ -1,13 +1,17 @@
+from glob import glob
+from multiprocessing import Event
 import time
 import threading
 import curses
-from random import randint
 sem = threading.Semaphore()
 mutex = threading.Lock()
 
 WINDOW_WIDTH = 60  # numero de colunas da tela
 WINDOW_HEIGHT = 20  # numero de linhas da tela
 ESC = 27 
+PAUSE = 112 #letra p na tabela ascii
+RESET = 114 #letra R na tabela ascii
+EXIT = 101 #letra e na tabela ascii
 
 curses.initscr()
 win = curses.newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0)
@@ -21,6 +25,7 @@ score = 0
 event = curses.KEY_DOWN
 flag = True
 flagEnemie = True
+paused = False
 
 class Player (threading.Thread):
     def __init__(self):
@@ -35,37 +40,41 @@ class Player (threading.Thread):
     def controlMovements(self):
         global flag
         global event
-        
-        if event == curses.KEY_RIGHT:
-            coordinates = [self.position[0], self.position[1] + 1]
 
-            if coordinates[1] != WINDOW_WIDTH-6:
-                # apaga posicao atual
-                win.addch(self.position[0], self.position[1], ' ')
-                self.position[1] = coordinates[1]
-                self.position[0] = coordinates[0]
-                win.addch(coordinates[0], coordinates[1], "x")
+        if(flag):
+            if event == curses.KEY_RIGHT:
+                coordinates = [self.position[0], self.position[1] + 1]
 
-        if self.position == WINDOW_WIDTH - 6:
-            pass
+                if coordinates[1] != WINDOW_WIDTH-6:
+                    # apaga posicao atual
+                    win.addch(self.position[0], self.position[1], ' ')
+                    self.position[1] = coordinates[1]
+                    self.position[0] = coordinates[0]
+                    win.addch(coordinates[0], coordinates[1], "x")
 
-        if event == curses.KEY_LEFT:
-            # move jogador para esquerda
-            coordinates = [self.position[0], self.position[1] - 1]
-            if coordinates[1] != 6:
-                # apaga posicao atual
-                win.addch(self.position[0], self.position[1], ' ')
-                self.position[1] = coordinates[1]
-                self.position[0] = coordinates[0]
-                win.addch(coordinates[0], coordinates[1], "x")
+            if self.position == WINDOW_WIDTH - 6:
+                pass
 
-        if event == curses.KEY_UP:
-            self.shotPosition[0] = self.position[0] - 1
-            self.shotPosition[1] = self.position[1]
-            self.shot = True
-            self.shotMovement(self.shotPosition[1], self.shotPosition[0])
-               
-        time.sleep(0.02)
+            if event == curses.KEY_LEFT:
+                # move jogador para esquerda
+                coordinates = [self.position[0], self.position[1] - 1]
+                if coordinates[1] != 6:
+                    # apaga posicao atual
+                    win.addch(self.position[0], self.position[1], ' ')
+                    self.position[1] = coordinates[1]
+                    self.position[0] = coordinates[0]
+                    win.addch(coordinates[0], coordinates[1], "x")
+
+            if event == curses.KEY_UP:
+                self.shotPosition[0] = self.position[0] - 1
+                self.shotPosition[1] = self.position[1]
+                self.shot = True
+                self.shotMovement(self.shotPosition[1], self.shotPosition[0])
+                
+            mutex.acquire()
+            flag = False
+            mutex.release()
+            time.sleep(0.02)
 
     def shotMovement(self, xPosition, yPosition):
         global flag
@@ -96,8 +105,10 @@ class Enemie (threading.Thread):
         self.operator = 1  # aumenta ou diminui se indo para esquerda ou direita
         self.direction = 'right'
         self.numOfShots = 0
+        self.stopped = event
 
     def run(self):
+
         self.enemie_movement()
 
     def enemie_movement(self):
@@ -165,13 +176,50 @@ class Enemie (threading.Thread):
 def updateScreen():
     global flag
     global flagEnemie
+    global paused
     win.timeout(150)
+
     while(event != ESC):
         mutex.acquire()
-        flag = True #flag que sinaliza que o player pode se mover
-        flagEnemie = True #flag que sinaliza que o enemie pode se mover
+        if (paused == False): # se não está pausado então habilita movimentos
+            flag = True #flag que sinaliza que o player pode se mover
+            flagEnemie = True #flag que sinaliza que o enemie pode se mover
         mutex.release()
         time.sleep(0.1)
+
+def interfaceThread():
+    global event
+    global flag
+    global flagEnemie
+    global paused
+    global score
+
+    while(True):
+        if (event == PAUSE and paused == False):
+            mutex.acquire()
+            flag = False #flag que sinaliza que o player pode se mover
+            flagEnemie = False #flag que sinaliza que o enemie pode se mover
+            paused = True
+            event = 97 # usando apenas para mudar event e poder retomar o jogo
+            mutex.release()
+
+        if (event == PAUSE and paused == True):
+            mutex.acquire()
+            flag = True #flag que sinaliza que o player pode se mover
+            flagEnemie = True #flag que sinaliza que o enemie pode se mover
+            paused = False
+            event = 97 # usando apenas para mudar event e poder pausar o jogo
+            mutex.release()
+
+        if(event == RESET):
+            mutex.acquire()
+            score = 0
+
+            mutex.release()
+
+
+        if (event == EXIT):
+            curses.endwin()
 
 
 def main():
@@ -180,18 +228,22 @@ def main():
     
     enemie = Enemie()
     thread3 = threading.Thread(target=updateScreen)
+    thread4 = threading.Thread(target=interfaceThread)
     win.addch(18, 30, 'x')  # inicializando posição do jogador
 
     player = Player()
     player.start()
     enemie.start()
     thread3.start()
+    thread4.start()
 
     while event != ESC: # enquanto evento não for esc continua rodando o programa
         event = win.getch()
+        win.addstr(2, 2, 'Score ' + str(score) + ' ')
         player.run()
         enemie.run()
 
+    thread4.join()
     thread3.join()
     enemie.join()
     player.join()
