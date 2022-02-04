@@ -1,8 +1,10 @@
-from glob import glob
+
 from multiprocessing import Event
 import time
 import threading
 import curses
+
+from numpy import True_
 sem = threading.Semaphore()
 mutex = threading.Lock()
 
@@ -26,6 +28,7 @@ event = curses.KEY_DOWN
 flag = True
 flagEnemie = True
 paused = False
+reset = False
 
 class Player (threading.Thread):
     def __init__(self):
@@ -40,8 +43,19 @@ class Player (threading.Thread):
     def controlMovements(self):
         global flag
         global event
+        global reset
 
         if(flag):
+
+            if(reset):
+                win.addch(self.position[0], self.position[1], ' ')
+                self.position = [18, 30]
+                win.addch(self.position[0], self.position[1], 'x')
+                self.shotPosition = [17, 30]
+                self.shot = False
+                reset = False
+
+
             if event == curses.KEY_RIGHT:
                 coordinates = [self.position[0], self.position[1] + 1]
 
@@ -114,8 +128,23 @@ class Enemie (threading.Thread):
     def enemie_movement(self):
         global event
         global flagEnemie
+        global reset
 
         if(flagEnemie):
+            if(reset):
+                for n in range(WINDOW_WIDTH-5):
+                    self.enemie_position[1] = n+1
+                    win.addch(self.enemie_position[0], self.enemie_position[1], ' ')
+
+                self.enemie_position = [4, 28]
+                self.enemie_shot_position = [0, 0]
+                self.shot = False
+                self.operator = 1
+                self.direction = 'right'
+                self.numOfShots = 0
+                self.stopped = event
+                reset = False
+
             for x in range(4): 
                 if self.direction == 'right':
                     erase = self.enemie_position[1] - 5 # apaga o 5 elemento da direita para esquerda
@@ -212,9 +241,12 @@ def interfaceThread():
             mutex.release()
 
         if(event == RESET):
+            global reset
+            global score
             mutex.acquire()
             score = 0
-
+            reset = True
+            event = 97 # usando apenas para mudar event e poder retomar o jogo
             mutex.release()
 
 
@@ -247,8 +279,8 @@ def main():
     thread3.join()
     enemie.join()
     player.join()
-
     curses.endwin()
     print(f"Final score = {score}")
 
-main()
+if event != ESC:
+    main()
