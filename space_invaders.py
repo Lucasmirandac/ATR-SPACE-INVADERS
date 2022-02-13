@@ -16,14 +16,6 @@ PAUSE = 112  # letra p na tabela ascii
 RESET = 114  # letra R na tabela ascii
 EXIT = 101  # letra e na tabela ascii
 
-curses.initscr()
-win = curses.newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0)
-win.keypad(True)
-curses.noecho()
-curses.curs_set(0)
-win.border(0)
-win.nodelay(True)
-
 score = 0
 event = curses.KEY_DOWN
 flag = True
@@ -37,6 +29,13 @@ endGameTime = 'Game in progress'
 vidas = 3
 deadTime = 'Still alive'
 
+curses.initscr()
+win = curses.newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0)
+win.keypad(True)
+curses.noecho()
+curses.curs_set(0)
+win.border(0)
+win.nodelay(True)
 
 class Player(threading.Thread):
     def __init__(self):
@@ -54,7 +53,6 @@ class Player(threading.Thread):
         global reset
 
         if flag:
-
             if reset:
                 win.addch(self.position[0], self.position[1], ' ')
                 self.position = [18, 30]
@@ -231,7 +229,6 @@ def update_screen():
     win.timeout(150)
 
     while event != ESC:
-
         if not paused:  # se não está pausado então habilita movimentos
             mutex.acquire()
             flag = True  # flag que sinaliza que o player pode se mover
@@ -330,6 +327,7 @@ def main():
     port = 8080
     server = (host, port)
     connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
     enemy = Enemy()
     player = Player()
     thread3 = threading.Thread(target=update_screen)
